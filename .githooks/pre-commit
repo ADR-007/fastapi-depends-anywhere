@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -e
+
+# Only run lint if we're not in a merge state.
+if [ ! -f "${GIT_DIR}/MERGE_HEAD" ]; then
+  make lint
+fi
