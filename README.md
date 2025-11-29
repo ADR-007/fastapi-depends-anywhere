@@ -3,6 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/fastapi-depends-anywhere.svg)](https://badge.fury.io/py/fastapi-depends-anywhere)
 [![Python versions](https://img.shields.io/pypi/pyversions/fastapi-depends-anywhere.svg)](https://pypi.org/project/fastapi-depends-anywhere/)
 [![CI](https://github.com/ADR-007/fastapi-depends-anywhere/actions/workflows/ci.yaml/badge.svg)](https://github.com/ADR-007/fastapi-depends-anywhere/actions/workflows/ci.yaml)
+![Coverage](https://raw.githubusercontent.com/ADR-007/fastapi-depends-anywhere/_xml_coverage_reports/data/main/./badge.svg)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 Run FastAPI dependency injection anywhere - in background tasks, scripts, tests, and migrations.
