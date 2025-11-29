@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.0.2 (2025-11-29)
+
+### Documentation
+
+- Add coverage badge to README
+  ([`4ab1f49`](https://github.com/ADR-007/fastapi-depends-anywhere/commit/4ab1f49847457685cf3b53255a73492b850091ad))
+
+
 ## v1.0.1 (2025-11-28)
 
 ### Bug Fixes
