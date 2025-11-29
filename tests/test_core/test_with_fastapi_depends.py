@@ -63,8 +63,12 @@ async def test_with_exception_in_dependency(app: FastAPI) -> None:
     """Test that exceptions in dependencies are propagated."""
     configure(app=app)
 
+    should_raise = False
+
     async def get_value() -> int:
-        raise ValueError("Error in dependency")
+        if should_raise:
+            raise ValueError("Error in dependency")
+        return 42
 
     value_annotated = Annotated[int, Depends(get_value)]
 
@@ -72,6 +76,11 @@ async def test_with_exception_in_dependency(app: FastAPI) -> None:
     async def add_to_value(first: int, *, second: value_annotated) -> int:
         return first + second
 
+    # First verify function works normally
+    assert await add_to_value(1) == 43
+
+    # Then verify exception is propagated
+    should_raise = True
     with pytest.raises(ValueError, match="Error in dependency"):
         await add_to_value(1)
 
@@ -93,13 +102,19 @@ async def test_with_validation_error(
         await add_to_value()
 
 
-async def test_without_config() -> None:
+async def test_without_config(app: FastAPI) -> None:
     """Test that using decorator without config raises RuntimeError."""
-    with pytest.raises(RuntimeError, match="No FastAPI app configured"):
 
-        @with_fastapi_depends
-        async def my_func() -> None:
-            pass
+    async def my_func() -> int:
+        return 42
+
+    with pytest.raises(RuntimeError, match="No FastAPI app configured"):
+        with_fastapi_depends(my_func)
+
+    # Verify it works when configured
+    configure(app=app)
+    wrapped = with_fastapi_depends(my_func)
+    assert await wrapped() == 42
 
 
 async def test_with_explicit_app(app: FastAPI) -> None:
@@ -184,12 +199,8 @@ async def test_runtime_scope_with_auth_header(app: FastAPI) -> None:
             self.user_id = user_id
 
     async def get_current_user(authorization: str = Header()) -> AuthUser:
-        # Read Authorization header via FastAPI's Header dependency
-        if authorization.startswith("Bearer "):
-            token = authorization[7:]
-            return AuthUser(user_id=token)  # Simplified: token is user_id
-        msg = "Missing auth header"
-        raise ValueError(msg)
+        # Simplified: token is user_id (assumes "Bearer <token>" format)
+        return AuthUser(user_id=authorization[7:])
 
     auth_user_dep = Annotated[AuthUser, Depends(get_current_user)]
 
@@ -222,8 +233,12 @@ async def test_dependency_overrides(app: FastAPI) -> None:
     async def my_func(*, value: value_annotated) -> int:
         return value
 
-    app.dependency_overrides[get_value] = get_override_value
+    # First verify original dependency works
+    result = await my_func()
+    assert result == 42
 
+    # Now test override
+    app.dependency_overrides[get_value] = get_override_value
     result = await my_func()
     assert result == 100
 

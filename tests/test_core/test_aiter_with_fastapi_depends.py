@@ -65,13 +65,19 @@ async def test_with_class_method(app: FastAPI) -> None:
     assert logs == ["init get_value", "add_to_value", "cleanup get_value"]
 
 
-async def test_without_config() -> None:
+async def test_without_config(app: FastAPI) -> None:
     """Test that using aiter_with_fastapi_depends without config raises RuntimeError."""
-    with pytest.raises(RuntimeError, match="No FastAPI app configured"):
 
-        @aiter_with_fastapi_depends
-        async def my_func() -> AsyncGenerator[int, None]:
-            yield 1
+    async def my_gen() -> AsyncGenerator[int, None]:
+        yield 1
+
+    with pytest.raises(RuntimeError, match="No FastAPI app configured"):
+        aiter_with_fastapi_depends(my_gen)
+
+    # Verify the generator works when properly configured
+    configure(app=app)
+    wrapped = aiter_with_fastapi_depends(my_gen)
+    assert [v async for v in wrapped()] == [1]
 
 
 async def test_with_explicit_app(app: FastAPI) -> None:
@@ -119,12 +125,8 @@ async def test_runtime_scope_with_auth_header(app: FastAPI) -> None:
             self.user_id = user_id
 
     async def get_current_user(authorization: str = Header()) -> AuthUser:
-        # Read Authorization header via FastAPI's Header dependency
-        if authorization.startswith("Bearer "):
-            token = authorization[7:]
-            return AuthUser(user_id=token)  # Simplified: token is user_id
-        msg = "Missing auth header"
-        raise ValueError(msg)
+        # Simplified: token is user_id (assumes "Bearer <token>" format)
+        return AuthUser(user_id=authorization[7:])
 
     auth_user_dep = Annotated[AuthUser, Depends(get_current_user)]
 

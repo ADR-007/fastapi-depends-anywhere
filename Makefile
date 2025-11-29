@@ -19,7 +19,7 @@ test:
 
 test-cov:
 	uv run coverage run -m pytest tests/ -v
-	uv run coverage report --skip-empty
+	uv run coverage report --skip-empty --show-missing
 
 test-all:
 	uv run tox

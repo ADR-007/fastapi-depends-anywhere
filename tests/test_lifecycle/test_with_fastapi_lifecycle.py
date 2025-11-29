@@ -61,11 +61,17 @@ async def test_exception_handling(app: FastAPI) -> None:
 
 async def test_without_config() -> None:
     """Test that using decorator without config raises RuntimeError."""
-    with pytest.raises(RuntimeError, match="No FastAPI app configured"):
 
-        @with_fastapi_lifecycle
-        async def my_func() -> None:
-            pass
+    async def my_func() -> int:
+        return 42
+
+    with pytest.raises(RuntimeError, match="No FastAPI app configured"):
+        with_fastapi_lifecycle(my_func)
+
+    # Verify it works when configured with explicit app
+    app = FastAPI()
+    wrapped = with_fastapi_lifecycle(app=app)(my_func)
+    assert await wrapped() == 42
 
 
 async def test_with_explicit_app() -> None:

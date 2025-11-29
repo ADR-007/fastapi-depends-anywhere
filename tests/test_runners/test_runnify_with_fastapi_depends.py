@@ -109,11 +109,17 @@ def test_without_config() -> None:
 
     reset_config()
 
-    with pytest.raises(RuntimeError, match="No FastAPI app configured"):
+    async def my_func() -> int:
+        return 42
 
-        @runnify_with_fastapi_depends
-        async def my_func() -> None:
-            pass
+    with pytest.raises(RuntimeError, match="No FastAPI app configured"):
+        runnify_with_fastapi_depends(my_func)
+
+    # Verify it works when configured
+    app = FastAPI()
+    configure(app=app)
+    wrapped = runnify_with_fastapi_depends(my_func)
+    assert wrapped() == 42
 
 
 def test_cleanup_on_exception() -> None:
