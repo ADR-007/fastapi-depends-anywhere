@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.1.0 (2025-11-29)
+
+### Features
+
+- Add runtime scope support
+  ([`fa3ee1a`](https://github.com/ADR-007/fastapi-depends-anywhere/commit/fa3ee1a54d0e637a317c337869cd84781853e6af))
+
+### Testing
+
+- Improve test coverage and simplify test cases
+  ([`1da53de`](https://github.com/ADR-007/fastapi-depends-anywhere/commit/1da53deeb4af92bf107429a8380962d18f28b277))
+
+
 ## v1.0.2 (2025-11-29)
 
 ### Documentation

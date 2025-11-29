@@ -1,6 +1,6 @@
 [project]
 name = "fastapi-depends-anywhere"
-version = "1.0.2"
+version = "1.1.0"
 description = "Run FastAPI dependency injection anywhere - in background tasks, scripts, and tests"
 authors = [
     {name = "Adrian Dankiv", email = "adr-007@ukr.net"}
