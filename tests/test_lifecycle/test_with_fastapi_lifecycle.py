@@ -1,4 +1,4 @@
-"""Tests for lifecycle management."""
+"""Tests for with_fastapi_lifecycle decorator."""
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi_depends_anywhere import configure, with_fastapi_lifecycle
 
 
-async def test_with_fastapi_lifecycle_lifespan_context(app: FastAPI) -> None:
+async def test_lifespan_context(app: FastAPI) -> None:
     """Test with_fastapi_lifecycle using lifespan context."""
     logs: list[str] = []
 
@@ -33,7 +33,7 @@ async def test_with_fastapi_lifecycle_lifespan_context(app: FastAPI) -> None:
     assert logs == ["startup", "my_func", "shutdown"]
 
 
-async def test_with_fastapi_lifecycle_exception_handling(app: FastAPI) -> None:
+async def test_exception_handling(app: FastAPI) -> None:
     """Test that shutdown runs even when function raises."""
     logs: list[str] = []
 
@@ -59,7 +59,7 @@ async def test_with_fastapi_lifecycle_exception_handling(app: FastAPI) -> None:
     assert logs == ["startup", "my_func", "shutdown"]
 
 
-async def test_with_fastapi_lifecycle_without_config() -> None:
+async def test_without_config() -> None:
     """Test that using decorator without config raises RuntimeError."""
     with pytest.raises(RuntimeError, match="No FastAPI app configured"):
 
@@ -68,7 +68,7 @@ async def test_with_fastapi_lifecycle_without_config() -> None:
             pass
 
 
-async def test_with_fastapi_lifecycle_with_explicit_app() -> None:
+async def test_with_explicit_app() -> None:
     """Test with_fastapi_lifecycle with explicit app parameter."""
     logs: list[str] = []
 
@@ -91,7 +91,7 @@ async def test_with_fastapi_lifecycle_with_explicit_app() -> None:
     assert logs == ["startup", "my_func", "shutdown"]
 
 
-async def test_with_fastapi_lifecycle_preserves_return_value() -> None:
+async def test_preserves_return_value() -> None:
     """Test that the decorated function's return value is preserved."""
     logs: list[str] = []
 
@@ -113,7 +113,7 @@ async def test_with_fastapi_lifecycle_preserves_return_value() -> None:
     assert result == {"a": 1, "b": 2}
 
 
-async def test_with_fastapi_lifecycle_with_args() -> None:
+async def test_with_args() -> None:
     """Test that the decorated function receives its arguments."""
     logs: list[str] = []
 
@@ -136,7 +136,7 @@ async def test_with_fastapi_lifecycle_with_args() -> None:
 
 
 @pytest.mark.filterwarnings("ignore::DeprecationWarning")
-async def test_with_fastapi_lifecycle_fallback_startup_shutdown() -> None:
+async def test_fallback_startup_shutdown() -> None:
     """Test fallback to startup/shutdown when lifespan_context is not available."""
     logs: list[str] = []
 

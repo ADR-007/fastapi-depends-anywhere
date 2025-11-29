@@ -180,12 +180,49 @@ async def my_function(*, db: DbDep) -> None:
 
 ### Custom Request Scope
 
-Pass custom ASGI scope data to dependencies that need it:
+Pass custom ASGI scope data to dependencies that need it.
+
+**At decoration time** (static scope):
 
 ```python
 @with_fastapi_depends(scope={"method": "POST", "path": "/custom"})
 async def my_function(*, request: Request) -> None:
     print(request.method)  # "POST"
+```
+
+**At call time** (dynamic scope) - useful for background tasks that need request context:
+
+```python
+@with_fastapi_depends
+async def process_for_user(*, user: CurrentUserDep) -> None:
+    # user is resolved from the passed scope's headers
+    print(f"Processing for {user.id}")
+
+@app.post("/trigger")
+async def trigger(request: Request, background_tasks: BackgroundTasks) -> dict:
+    # Pass the request scope to preserve auth headers, etc.
+    background_tasks.add_task(process_for_user, _scope=request.scope)
+    return {"status": "queued"}
+```
+
+This allows dependencies that read from `Request` (like auth) to work in background tasks:
+
+```python
+from fastapi import Header
+
+async def get_current_user(authorization: str = Header()) -> AuthUser:
+    if authorization.startswith("Bearer "):
+        return decode_token(authorization[7:])
+    raise HTTPException(401)
+
+CurrentUserDep = Annotated[AuthUser, Depends(get_current_user)]
+
+@with_fastapi_depends
+async def send_notification(*, user: CurrentUserDep, mailer: MailerDep) -> None:
+    await mailer.send(user.email, "Task completed!")
+
+# In your route - scope carries the auth headers
+background_tasks.add_task(send_notification, _scope=request.scope)
 ```
 
 ### Context Integration

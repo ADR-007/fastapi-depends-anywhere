@@ -1,4 +1,4 @@
-"""Tests for sync runners.
+"""Tests for runnify_with_fastapi_depends decorator.
 
 These tests are skipped if asyncer is not installed.
 """
@@ -16,7 +16,7 @@ from fastapi_depends_anywhere import configure  # noqa: E402
 from fastapi_depends_anywhere.runners import runnify_with_fastapi_depends  # noqa: E402
 
 
-def test_runnify_with_fastapi_depends_basic() -> None:
+def test_basic() -> None:
     """Test runnify_with_fastapi_depends basic functionality."""
     logs: list[str] = []
 
@@ -47,7 +47,7 @@ def test_runnify_with_fastapi_depends_basic() -> None:
     assert logs == ["startup", "get_value", "my_func", "shutdown"]
 
 
-def test_runnify_with_fastapi_depends_with_args() -> None:
+def test_with_args() -> None:
     """Test runnify_with_fastapi_depends with function arguments."""
     logs: list[str] = []
 
@@ -74,7 +74,7 @@ def test_runnify_with_fastapi_depends_with_args() -> None:
     assert result == 50
 
 
-def test_runnify_with_fastapi_depends_with_explicit_app() -> None:
+def test_with_explicit_app() -> None:
     """Test runnify_with_fastapi_depends with explicit app parameter."""
     logs: list[str] = []
 
@@ -103,7 +103,7 @@ def test_runnify_with_fastapi_depends_with_explicit_app() -> None:
     assert logs == ["startup", "get_value", "my_func", "shutdown"]
 
 
-def test_runnify_with_fastapi_depends_without_config() -> None:
+def test_without_config() -> None:
     """Test that using decorator without config raises RuntimeError."""
     from fastapi_depends_anywhere import reset_config
 
@@ -116,7 +116,7 @@ def test_runnify_with_fastapi_depends_without_config() -> None:
             pass
 
 
-def test_runnify_with_fastapi_depends_cleanup_on_exception() -> None:
+def test_cleanup_on_exception() -> None:
     """Test that exception is propagated correctly."""
     logs: list[str] = []
 

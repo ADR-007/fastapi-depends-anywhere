@@ -129,6 +129,7 @@ def aiter_with_fastapi_depends[R](
 
     Returns:
         A wrapped async generator function with resolved dependencies.
+        The wrapper accepts an optional `_scope` kwarg to pass ASGI scope at call time.
 
     Raises:
         RuntimeError: If no app is configured or provided.
@@ -139,6 +140,10 @@ def aiter_with_fastapi_depends[R](
         async def stream_data(*, db: Database = Depends(get_db)) -> AsyncGenerator[str, None]:
             async for row in db.stream("SELECT * FROM data"):
                 yield row
+
+        # Call with optional scope
+        async for row in stream_data(_scope=request.scope):
+            print(row)
         ```
     """
 
@@ -155,8 +160,12 @@ def aiter_with_fastapi_depends[R](
 
         @wraps(fn)
         async def wrapper(*args: Any, **kwargs: Any) -> AsyncGenerator[R, None]:
+            # Extract runtime scope from kwargs (takes precedence over decorator scope)
+            runtime_scope = kwargs.pop("_scope", None)
+
             async with resolve_fastapi_depends(
                 fn,
+                scope=dict(runtime_scope) if runtime_scope is not None else None,
                 dependency_overrides_provider=resolved_app,
             ) as depends_kwargs:
                 async for result in fn(*args, **kwargs, **depends_kwargs):
@@ -211,13 +220,15 @@ def with_fastapi_depends[R](
 
     Args:
         func: The function to decorate.
-        scope: Optional ASGI scope dict to pass to dependencies.
+        scope: Optional ASGI scope dict to pass to dependencies (at decoration time).
         context: Optional context dict for the context factory (e.g., logging context).
         app: Optional FastAPI app instance. If not provided, uses the globally
             configured app.
 
     Returns:
         An async wrapper function with resolved dependencies.
+        The wrapper accepts an optional `_scope` kwarg to pass ASGI scope at call time,
+        which takes precedence over the decorator's `scope` argument.
 
     Raises:
         RuntimeError: If no app is configured or provided.
@@ -228,8 +239,8 @@ def with_fastapi_depends[R](
         async def background_task(*, db: Database = Depends(get_db)) -> None:
             await db.execute("INSERT INTO logs VALUES (...)")
 
-        # Call it
-        await background_task()
+        # Call with optional scope from request
+        background_tasks.add_task(background_task, _scope=request.scope)
         ```
     """
 
@@ -246,13 +257,17 @@ def with_fastapi_depends[R](
 
         @wraps(fn)
         async def wrapper(*args: Any, **kwargs: Any) -> R:
+            # Extract runtime scope from kwargs (takes precedence over decorator scope)
+            runtime_scope = kwargs.pop("_scope", None)
+            effective_scope = runtime_scope if runtime_scope is not None else scope
+
             # Use context factory if configured and context is provided
             ctx_manager = context_factory(context) if context_factory and context else nullcontext()
 
             with ctx_manager:
                 async with resolve_fastapi_depends(
                     fn,
-                    scope=dict(scope) if scope is not None else None,
+                    scope=dict(effective_scope) if effective_scope is not None else None,
                     dependency_overrides_provider=resolved_app,
                 ) as depends_kwargs:
                     result = fn(*args, **kwargs, **depends_kwargs)

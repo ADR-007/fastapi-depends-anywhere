@@ -1,22 +1,19 @@
-"""Tests for core functionality."""
+"""Tests for with_fastapi_depends decorator."""
 
 from collections.abc import AsyncGenerator, Generator
-from typing import Annotated
+from typing import Annotated, Any
 
 import pytest
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Header
 from fastapi.exceptions import RequestValidationError
 from pytest_mock import MockFixture
+from starlette.requests import Request
 
-from fastapi_depends_anywhere import (
-    aiter_with_fastapi_depends,
-    configure,
-    with_fastapi_depends,
-)
+from fastapi_depends_anywhere import configure, with_fastapi_depends
 from fastapi_depends_anywhere import core as core_module
 
 
-async def test_with_fastapi_depends_async_function(app: FastAPI) -> None:
+async def test_async_function(app: FastAPI) -> None:
     """Test with_fastapi_depends with async function and async generator dependency."""
     configure(app=app)
     logs: list[str] = []
@@ -39,7 +36,7 @@ async def test_with_fastapi_depends_async_function(app: FastAPI) -> None:
     assert logs == ["init get_value", "add_to_value", "cleanup get_value"]
 
 
-async def test_with_fastapi_depends_sync_function(app: FastAPI) -> None:
+async def test_sync_function(app: FastAPI) -> None:
     """Test with_fastapi_depends with sync function and sync generator dependency."""
     configure(app=app)
     logs: list[str] = []
@@ -62,7 +59,7 @@ async def test_with_fastapi_depends_sync_function(app: FastAPI) -> None:
     assert logs == ["init get_value", "add_to_value", "cleanup get_value"]
 
 
-async def test_with_fastapi_depends_with_exception_in_dependency(app: FastAPI) -> None:
+async def test_with_exception_in_dependency(app: FastAPI) -> None:
     """Test that exceptions in dependencies are propagated."""
     configure(app=app)
 
@@ -79,7 +76,7 @@ async def test_with_fastapi_depends_with_exception_in_dependency(app: FastAPI) -
         await add_to_value(1)
 
 
-async def test_with_fastapi_depends_with_validation_error(
+async def test_with_validation_error(
     app: FastAPI,
     mocker: MockFixture,
 ) -> None:
@@ -96,7 +93,7 @@ async def test_with_fastapi_depends_with_validation_error(
         await add_to_value()
 
 
-async def test_with_fastapi_depends_without_config() -> None:
+async def test_without_config() -> None:
     """Test that using decorator without config raises RuntimeError."""
     with pytest.raises(RuntimeError, match="No FastAPI app configured"):
 
@@ -105,7 +102,7 @@ async def test_with_fastapi_depends_without_config() -> None:
             pass
 
 
-async def test_with_fastapi_depends_with_explicit_app(app: FastAPI) -> None:
+async def test_with_explicit_app(app: FastAPI) -> None:
     """Test with_fastapi_depends with explicit app parameter."""
     logs: list[str] = []
 
@@ -124,25 +121,10 @@ async def test_with_fastapi_depends_with_explicit_app(app: FastAPI) -> None:
     assert logs == ["get_value"]
 
 
-async def test_with_fastapi_depends_with_scope(app: FastAPI) -> None:
-    """Test with_fastapi_depends with custom scope."""
-    from fastapi_depends_anywhere.core import resolve_fastapi_depends
-
+async def test_with_scope(app: FastAPI) -> None:
+    """Test with_fastapi_depends works with scope parameter at decoration time."""
     configure(app=app)
 
-    async def capture_scope() -> str:
-        return "captured"
-
-    # Test that custom scope values are passed through
-    async with resolve_fastapi_depends(
-        capture_scope,
-        scope={"method": "POST", "path": "/test"},
-        dependency_overrides_provider=app,
-    ) as deps:
-        # The scope is passed to the Request object
-        assert deps == {}  # No dependencies to resolve
-
-    # Test that with_fastapi_depends works with scope parameter
     @with_fastapi_depends(scope={"method": "POST"})
     async def my_func() -> str:
         return "result"
@@ -151,87 +133,80 @@ async def test_with_fastapi_depends_with_scope(app: FastAPI) -> None:
     assert result == "result"
 
 
-async def test_aiter_with_fastapi_depends(app: FastAPI) -> None:
-    """Test aiter_with_fastapi_depends with async generator function."""
+async def test_runtime_scope(app: FastAPI) -> None:
+    """Test with_fastapi_depends with runtime _scope parameter."""
     configure(app=app)
-    logs: list[str] = []
+    captured_scope: dict[str, Any] = {}
 
-    async def get_value() -> AsyncGenerator[int, None]:
-        logs.append("init get_value")
-        yield 42
-        logs.append("cleanup get_value")
+    async def capture_request(request: Request) -> None:
+        captured_scope.update(request.scope)
 
-    value_annotated = Annotated[int, Depends(get_value)]
+    capture_annotated = Annotated[None, Depends(capture_request)]
 
-    @aiter_with_fastapi_depends
-    async def add_to_value(first: int, *, second: value_annotated) -> AsyncGenerator[int, None]:
-        logs.append("add_to_value")
-        yield first + second
+    @with_fastapi_depends
+    async def my_func(*, _dep: capture_annotated) -> str:
+        return "result"
 
-    values = [v async for v in add_to_value(1)]
-
-    assert values == [43]
-    assert logs == ["init get_value", "add_to_value", "cleanup get_value"]
+    # Call with runtime _scope
+    result = await my_func(_scope={"method": "POST", "path": "/custom"})
+    assert result == "result"
+    assert captured_scope["method"] == "POST"
+    assert captured_scope["path"] == "/custom"
 
 
-async def test_aiter_with_fastapi_depends_with_class_method(app: FastAPI) -> None:
-    """Test aiter_with_fastapi_depends with class method."""
+async def test_runtime_scope_overrides_decorator_scope(app: FastAPI) -> None:
+    """Test that runtime _scope takes precedence over decorator scope."""
     configure(app=app)
-    logs: list[str] = []
+    captured_scope: dict[str, Any] = {}
 
-    async def get_value() -> AsyncGenerator[int, None]:
-        logs.append("init get_value")
-        yield 42
-        logs.append("cleanup get_value")
+    async def capture_request(request: Request) -> None:
+        captured_scope.update(request.scope)
 
-    value_annotated = Annotated[int, Depends(get_value)]
+    capture_annotated = Annotated[None, Depends(capture_request)]
 
-    class MyClass:
-        label = "add_to_value"
+    @with_fastapi_depends(scope={"method": "GET", "path": "/decorator"})
+    async def my_func(*, _dep: capture_annotated) -> str:
+        return "result"
 
-        @classmethod
-        @aiter_with_fastapi_depends
-        async def add_to_value(
-            cls,
-            first: int,
-            *,
-            second: value_annotated,
-        ) -> AsyncGenerator[int, None]:
-            logs.append(cls.label)
-            yield first + second
-
-    values = [v async for v in MyClass.add_to_value(1)]
-
-    assert values == [43]
-    assert logs == ["init get_value", "add_to_value", "cleanup get_value"]
+    # Runtime _scope should override decorator scope
+    result = await my_func(_scope={"method": "POST", "path": "/runtime"})
+    assert result == "result"
+    assert captured_scope["method"] == "POST"
+    assert captured_scope["path"] == "/runtime"
 
 
-async def test_aiter_with_fastapi_depends_without_config() -> None:
-    """Test that using aiter_with_fastapi_depends without config raises RuntimeError."""
-    with pytest.raises(RuntimeError, match="No FastAPI app configured"):
+async def test_runtime_scope_with_auth_header(app: FastAPI) -> None:
+    """Test reading headers from scope in a dependency (e.g., auth user)."""
+    configure(app=app)
 
-        @aiter_with_fastapi_depends
-        async def my_func() -> AsyncGenerator[int, None]:
-            yield 1
+    class AuthUser:
+        def __init__(self, user_id: str) -> None:
+            self.user_id = user_id
+
+    async def get_current_user(authorization: str = Header()) -> AuthUser:
+        # Read Authorization header via FastAPI's Header dependency
+        if authorization.startswith("Bearer "):
+            token = authorization[7:]
+            return AuthUser(user_id=token)  # Simplified: token is user_id
+        msg = "Missing auth header"
+        raise ValueError(msg)
+
+    auth_user_dep = Annotated[AuthUser, Depends(get_current_user)]
+
+    @with_fastapi_depends
+    async def get_user_data(*, user: auth_user_dep) -> str:
+        return f"User: {user.user_id}"
+
+    # Simulate passing request.scope with headers from an endpoint
+    scope_with_auth = {
+        "headers": [(b"authorization", b"Bearer user-123")],
+    }
+
+    result = await get_user_data(_scope=scope_with_auth)
+    assert result == "User: user-123"
 
 
-async def test_aiter_with_fastapi_depends_with_explicit_app(app: FastAPI) -> None:
-    """Test aiter_with_fastapi_depends with explicit app parameter."""
-
-    async def get_value() -> int:
-        return 42
-
-    value_annotated = Annotated[int, Depends(get_value)]
-
-    @aiter_with_fastapi_depends(app=app)
-    async def my_func(*, value: value_annotated) -> AsyncGenerator[int, None]:
-        yield value
-
-    values = [v async for v in my_func()]
-    assert values == [42]
-
-
-async def test_with_fastapi_depends_dependency_overrides(app: FastAPI) -> None:
+async def test_dependency_overrides(app: FastAPI) -> None:
     """Test that dependency overrides work."""
     configure(app=app)
 
@@ -256,7 +231,7 @@ async def test_with_fastapi_depends_dependency_overrides(app: FastAPI) -> None:
     app.dependency_overrides.clear()
 
 
-async def test_with_fastapi_depends_multiple_dependencies(app: FastAPI) -> None:
+async def test_multiple_dependencies(app: FastAPI) -> None:
     """Test with multiple dependencies."""
     configure(app=app)
     logs: list[str] = []
@@ -285,7 +260,7 @@ async def test_with_fastapi_depends_multiple_dependencies(app: FastAPI) -> None:
     assert logs == ["init a", "init b", "my_func", "cleanup b", "cleanup a"]
 
 
-async def test_with_fastapi_depends_nested_dependencies(app: FastAPI) -> None:
+async def test_nested_dependencies(app: FastAPI) -> None:
     """Test with nested dependencies."""
     configure(app=app)
     logs: list[str] = []

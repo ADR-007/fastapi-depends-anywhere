@@ -1,4 +1,4 @@
-.PHONY: lint lint-fix test test-all install-githooks
+.PHONY: lint lint-fix test test-cov test-all install-githooks
 
 install-githooks:
 	@cd .git/hooks; \
@@ -16,6 +16,10 @@ lint-fix:
 
 test:
 	uv run pytest tests/ -v
+
+test-cov:
+	uv run coverage run -m pytest tests/ -v
+	uv run coverage report --skip-empty
 
 test-all:
 	uv run tox

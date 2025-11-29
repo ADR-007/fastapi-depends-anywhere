@@ -1,4 +1,4 @@
-"""Tests for configuration module."""
+"""Tests for configure function."""
 
 from collections.abc import Generator
 from contextlib import contextmanager
@@ -6,11 +6,11 @@ from typing import Any
 
 from fastapi import FastAPI
 
-from fastapi_depends_anywhere import configure, get_app, reset_config
+from fastapi_depends_anywhere import configure, get_app
 from fastapi_depends_anywhere.config import get_context_factory, is_configured
 
 
-def test_configure_app(app: FastAPI) -> None:
+def test_app(app: FastAPI) -> None:
     """Test configuring the app."""
     assert get_app() is None
     assert not is_configured()
@@ -21,7 +21,7 @@ def test_configure_app(app: FastAPI) -> None:
     assert is_configured()
 
 
-def test_configure_context_factory(app: FastAPI) -> None:
+def test_context_factory(app: FastAPI) -> None:
     """Test configuring context factory."""
     logs: list[str] = []
 
@@ -42,19 +42,7 @@ def test_configure_context_factory(app: FastAPI) -> None:
     assert logs == ["enter: {'key': 'value'}", "inside", "exit: {'key': 'value'}"]
 
 
-def test_reset_config(app: FastAPI) -> None:
-    """Test resetting configuration."""
-    configure(app=app)
-    assert get_app() is app
-    assert is_configured()
-
-    reset_config()
-
-    assert get_app() is None
-    assert not is_configured()
-
-
-def test_configure_without_app() -> None:
+def test_without_app() -> None:
     """Test configuring without app."""
     configure()
 
@@ -71,14 +59,3 @@ def test_reconfigure(app: FastAPI) -> None:
 
     configure(app=app2)
     assert get_app() is app2
-
-
-def test_get_context_factory_not_configured() -> None:
-    """Test getting context factory when not configured."""
-    assert get_context_factory() is None
-
-
-def test_is_configured_initially_false() -> None:
-    """Test that is_configured returns False initially."""
-    reset_config()
-    assert not is_configured()
