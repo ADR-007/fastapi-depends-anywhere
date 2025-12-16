@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Coroutine
 from functools import wraps
 from typing import Any, overload
 
@@ -14,7 +14,9 @@ from fastapi_depends_anywhere.config import get_app
 @overload
 def with_fastapi_lifecycle[R](
     func: Callable[..., Awaitable[R]],
-) -> Callable[..., Awaitable[R]]: ...
+    *,
+    app: FastAPI | None = None,
+) -> Callable[..., Coroutine[Any, Any, R]]: ...
 
 
 @overload
@@ -22,7 +24,7 @@ def with_fastapi_lifecycle[R](
     func: None = None,
     *,
     app: FastAPI | None = None,
-) -> Callable[[Callable[..., Awaitable[R]]], Callable[..., Awaitable[R]]]: ...
+) -> Callable[[Callable[..., Awaitable[R]]], Callable[..., Coroutine[Any, Any, R]]]: ...
 
 
 def with_fastapi_lifecycle[R](
@@ -30,8 +32,8 @@ def with_fastapi_lifecycle[R](
     *,
     app: FastAPI | None = None,
 ) -> (
-    Callable[..., Awaitable[R]]
-    | Callable[[Callable[..., Awaitable[R]]], Callable[..., Awaitable[R]]]
+    Callable[..., Coroutine[Any, Any, R]]
+    | Callable[[Callable[..., Awaitable[R]]], Callable[..., Coroutine[Any, Any, R]]]
 ):
     """Decorate a function to run within FastAPI's lifespan context.
 
@@ -70,7 +72,7 @@ def with_fastapi_lifecycle[R](
         ```
     """
 
-    def decorator(fn: Callable[..., Awaitable[R]]) -> Callable[..., Awaitable[R]]:
+    def decorator(fn: Callable[..., Awaitable[R]]) -> Callable[..., Coroutine[Any, Any, R]]:
         resolved_app = app or get_app()
         if resolved_app is None:
             msg = (
