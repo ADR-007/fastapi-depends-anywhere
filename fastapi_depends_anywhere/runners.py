@@ -7,8 +7,7 @@ dependencies synchronously. Requires the `asyncer` extra to be installed.
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from functools import wraps
-from typing import TYPE_CHECKING, Any, overload
+from typing import TYPE_CHECKING, overload
 
 from fastapi_depends_anywhere.config import get_app
 from fastapi_depends_anywhere.core import with_fastapi_depends
@@ -96,14 +95,15 @@ def runnify_with_fastapi_depends[R](
             )
             raise RuntimeError(msg)
 
-        @runnify  # type: ignore[arg-type]
-        @with_fastapi_lifecycle(app=resolved_app)
-        @with_fastapi_depends(app=resolved_app)
-        @wraps(fn)
-        async def wrapper(*args: Any, **kwargs: Any) -> R:
-            return await fn(*args, **kwargs)
-
-        return wrapper
+        return runnify(
+            with_fastapi_lifecycle(
+                with_fastapi_depends(
+                    fn,
+                    app=resolved_app,
+                ),
+                app=resolved_app,
+            )
+        )
 
     if func is not None:
         return decorator(func)

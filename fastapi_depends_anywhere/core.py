@@ -181,12 +181,20 @@ def aiter_with_fastapi_depends[R](
 @overload
 def with_fastapi_depends[R](
     func: Callable[..., Awaitable[R]],
+    scope: MutableMapping[str, Any] | None = None,
+    context: dict[str, Any] | None = None,
+    *,
+    app: FastAPI | None = None,
 ) -> Callable[..., Coroutine[None, None, R]]: ...
 
 
 @overload
 def with_fastapi_depends[R](
     func: Callable[..., R],
+    scope: MutableMapping[str, Any] | None = None,
+    context: dict[str, Any] | None = None,
+    *,
+    app: FastAPI | None = None,
 ) -> Callable[..., Coroutine[None, None, R]]: ...
 
 
