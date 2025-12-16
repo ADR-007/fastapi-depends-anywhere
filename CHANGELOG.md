@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.1.1 (2025-12-16)
+
+### Bug Fixes
+
+- **runners**: Fix runnify_with_fastapi_depends
+  ([`66cb2aa`](https://github.com/ADR-007/fastapi-depends-anywhere/commit/66cb2aa6f30506fa3898f442eaf7b5b4120fc776))
+
+### Chores
+
+- Improve type annotation
+  ([`267f322`](https://github.com/ADR-007/fastapi-depends-anywhere/commit/267f322fdc4218f43235359af7a8406e839f2a56))
+
+
 ## v1.1.0 (2025-11-29)
 
 ### Features
