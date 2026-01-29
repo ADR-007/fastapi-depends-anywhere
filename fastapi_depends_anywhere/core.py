@@ -9,7 +9,6 @@ from functools import wraps
 from typing import Any, overload
 
 from fastapi import FastAPI
-from fastapi._compat import _normalize_errors
 from fastapi.dependencies.utils import solve_dependencies
 from fastapi.exceptions import RequestValidationError
 from starlette.requests import Request
@@ -82,7 +81,7 @@ async def resolve_fastapi_depends(
             embed_body_fields=False,
         )
         if solved_result.errors:
-            raise RequestValidationError(_normalize_errors(solved_result.errors))
+            raise RequestValidationError(solved_result.errors)
 
         yield solved_result.values
 

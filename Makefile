@@ -1,4 +1,7 @@
-.PHONY: lint lint-fix test test-cov test-all install-githooks
+.PHONY: lint lint-fix test test-cov test-all install-githooks install-dependencies
+
+install-dependencies:
+	uv sync --all-groups --all-extras
 
 install-githooks:
 	@cd .git/hooks; \
