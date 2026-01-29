@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v1.1.2 (2026-01-29)
+
+### Bug Fixes
+
+- Remove deprecated `_normalize_errors` fastapi method usage
+  ([`041eee2`](https://github.com/ADR-007/fastapi-depends-anywhere/commit/041eee266c768dc488c19b9650619083e4556070))
+
+### Chores
+
+- Add make install-dependencies
+  ([`6f743e1`](https://github.com/ADR-007/fastapi-depends-anywhere/commit/6f743e15f653ab392ecd3d315eaa4a28768e82e5))
+
+
 ## v1.1.1 (2025-12-16)
 
 ### Bug Fixes
