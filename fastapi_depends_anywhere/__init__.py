@@ -30,8 +30,10 @@ from fastapi_depends_anywhere.core import (
     with_fastapi_depends,
 )
 from fastapi_depends_anywhere.lifecycle import with_fastapi_lifecycle
+from fastapi_depends_anywhere.stack import FastApiDepsStack
 
 __all__ = [
+    "FastApiDepsStack",
     "aiter_with_fastapi_depends",
     "configure",
     "get_app",

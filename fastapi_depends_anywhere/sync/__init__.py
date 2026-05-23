@@ -23,8 +23,10 @@ from fastapi_depends_anywhere.sync.core import (
 )
 from fastapi_depends_anywhere.sync.lifecycle import with_fastapi_lifecycle
 from fastapi_depends_anywhere.sync.runners import runnify_with_fastapi_depends
+from fastapi_depends_anywhere.sync.stack import FastApiDepsStack
 
 __all__ = [
+    "FastApiDepsStack",
     "iter_with_fastapi_depends",
     "resolve_fastapi_depends",
     "runnify_with_fastapi_depends",
