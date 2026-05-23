@@ -17,7 +17,7 @@ pip install fastapi-depends-anywhere
 # Using uv
 uv add fastapi-depends-anywhere
 
-# With asyncer support (for sync execution)
+# With asyncer support (for runnify_with_fastapi_depends)
 pip install fastapi-depends-anywhere[asyncer]
 ```
 
@@ -132,6 +132,51 @@ if __name__ == "__main__":
 ```
 
 Requires the `asyncer` extra: `pip install fastapi-depends-anywhere[asyncer]`
+
+## Synchronous Execution
+
+Use the `sync` subpackage to call FastAPI-dependency-injected functions from a **synchronous** context — Celery tasks, Django views, CLI scripts — without managing an event loop yourself.
+
+All sync decorators accept both sync and async handler functions and always return a plain sync callable.
+
+```python
+from fastapi_depends_anywhere.sync import with_fastapi_depends, with_fastapi_lifecycle
+
+@with_fastapi_depends
+def process_record(record_id: int, *, db: DbDep) -> Result:
+    return db.fetch(record_id)
+
+# No await, no asyncio.run() — just call it
+result = process_record(42)
+```
+
+For scripts that also need the FastAPI lifespan (startup/shutdown):
+
+```python
+from fastapi_depends_anywhere.sync.runners import runnify_with_fastapi_depends
+
+@runnify_with_fastapi_depends
+def nightly_cleanup(*, db: DbDep) -> None:
+    db.delete_old_records(days=30)
+
+if __name__ == "__main__":
+    nightly_cleanup()  # lifecycle + deps fully managed
+```
+
+For async generators bridged to sync iteration:
+
+```python
+from fastapi_depends_anywhere.sync import iter_with_fastapi_depends
+
+@iter_with_fastapi_depends
+def stream_users(*, db: DbDep) -> Generator[User, None, None]:
+    yield from db.iter_all_users()
+
+for user in stream_users():
+    print(user.name)
+```
+
+> **How it works:** a single daemon thread hosts a persistent `asyncio` event loop shared across all sync calls. Dependency resolution runs there via `run_coroutine_threadsafe`, so there is no per-call event loop creation overhead. No extra dependencies required.
 
 ## Configuration
 
@@ -263,16 +308,24 @@ async def startup() -> None:
 - `get_app()` - Get the configured FastAPI app
 - `reset_config()` - Reset configuration (useful for tests)
 
-### Decorators
+### Decorators (async)
 
 - `with_fastapi_depends(func, scope=None, context=None, app=None)` - Resolve dependencies for a function
 - `aiter_with_fastapi_depends(func, app=None)` - Resolve dependencies for an async generator
 - `with_fastapi_lifecycle(func, app=None)` - Run within FastAPI lifespan (for scripts/workers outside request flow)
-- `runnify_with_fastapi_depends(func, app=None)` - Run async function synchronously with dependencies
+- `runnify_with_fastapi_depends(func, app=None)` - Run async function synchronously with dependencies (requires `asyncer`)
 
-### Context Manager
+### Context Manager (async)
 
-- `resolve_fastapi_depends(func, scope=None, dependency_overrides_provider=None)` - Low-level context manager for dependency resolution
+- `resolve_fastapi_depends(func, scope=None, dependency_overrides_provider=None)` - Low-level async context manager for dependency resolution
+
+### `fastapi_depends_anywhere.sync` subpackage
+
+- `sync.with_fastapi_depends(func, scope=None, context=None, app=None)` - Resolve dependencies, return plain sync callable
+- `sync.iter_with_fastapi_depends(func, app=None)` - Resolve dependencies for a sync/async generator, returns `Generator`
+- `sync.with_fastapi_lifecycle(func, app=None)` - Run within FastAPI lifespan, return plain sync callable
+- `sync.runnify_with_fastapi_depends(func, app=None)` - Lifecycle + deps + sync execution in one decorator
+- `sync.resolve_fastapi_depends(func, scope=None, dependency_overrides_provider=None)` - Low-level sync context manager
 
 ## Use Cases
 
