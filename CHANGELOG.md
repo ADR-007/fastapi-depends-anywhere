@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.2.0 (2026-05-23)
+
+### Features
+
+- Add sync subpackage for synchronous dependency resolution
+  ([`2b7416a`](https://github.com/ADR-007/fastapi-depends-anywhere/commit/2b7416a2a4772e63d935ac5c28d4a832b51a06f2))
+
+
 ## v1.1.2 (2026-01-29)
 
 ### Bug Fixes
