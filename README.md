@@ -133,6 +133,31 @@ if __name__ == "__main__":
 
 Requires the `asyncer` extra: `pip install fastapi-depends-anywhere[asyncer]`
 
+### `FastApiDepsStack`
+
+A stateful context manager for resolving multiple dependencies in long-running, non-server contexts such as notebooks, interactive scripts, and workers. Starts the FastAPI lifespan once, keeps all resolved instances alive across calls, and tears everything down on close.
+
+```python
+from fastapi_depends_anywhere import FastApiDepsStack
+
+async with FastApiDepsStack(app=app) as stack:
+    db = await stack.resolve(DbDep)
+    cache = await stack.resolve(CacheDep)
+    # db and cache stay alive for the duration of the block
+```
+
+Or with explicit start/close:
+
+```python
+stack = FastApiDepsStack(app=app)
+await stack.start()
+
+db = await stack.resolve(DbDep)
+cache = await stack.resolve(CacheDep)
+
+await stack.close()  # runs all dep teardown + lifespan shutdown
+```
+
 ## Synchronous Execution
 
 Use the `sync` subpackage to call FastAPI-dependency-injected functions from a **synchronous** context — Celery tasks, Django views, CLI scripts — without managing an event loop yourself.
@@ -174,6 +199,16 @@ def stream_users(*, db: DbDep) -> Generator[User, None, None]:
 
 for user in stream_users():
     print(user.name)
+```
+
+The sync `FastApiDepsStack` works the same way:
+
+```python
+from fastapi_depends_anywhere.sync import FastApiDepsStack
+
+with FastApiDepsStack(app=app) as stack:
+    db = stack.resolve(DbDep)
+    cache = stack.resolve(CacheDep)
 ```
 
 > **How it works:** a single daemon thread hosts a persistent `asyncio` event loop shared across all sync calls. Dependency resolution runs there via `run_coroutine_threadsafe`, so there is no per-call event loop creation overhead. No extra dependencies required.
@@ -315,12 +350,17 @@ async def startup() -> None:
 - `with_fastapi_lifecycle(func, app=None)` - Run within FastAPI lifespan (for scripts/workers outside request flow)
 - `runnify_with_fastapi_depends(func, app=None)` - Run async function synchronously with dependencies (requires `asyncer`)
 
+### Dependency Stack (async)
+
+- `FastApiDepsStack(app=None)` - stateful async context manager; call `start()`, `resolve(DepType)`, `close()` (or use `async with`)
+
 ### Context Manager (async)
 
 - `resolve_fastapi_depends(func, scope=None, dependency_overrides_provider=None)` - Low-level async context manager for dependency resolution
 
 ### `fastapi_depends_anywhere.sync` subpackage
 
+- `sync.FastApiDepsStack(app=None)` - sync equivalent of `FastApiDepsStack`; use `with` or call `start()` / `resolve()` / `close()`
 - `sync.with_fastapi_depends(func, scope=None, context=None, app=None)` - Resolve dependencies, return plain sync callable
 - `sync.iter_with_fastapi_depends(func, app=None)` - Resolve dependencies for a sync/async generator, returns `Generator`
 - `sync.with_fastapi_lifecycle(func, app=None)` - Run within FastAPI lifespan, return plain sync callable
@@ -370,6 +410,32 @@ if __name__ == "__main__":
     cleanup(days)
 ```
 
+### Jupyter Notebook
+
+`FastApiDepsStack` is ideal for notebooks where you want to start the app once, explore data with real dependencies, and tear everything down at the end:
+
+```python
+from myapp.main import app
+from myapp.deps import DbDep, CacheDep
+from fastapi_depends_anywhere import FastApiDepsStack
+
+# Cell 1 — start once
+stack = FastApiDepsStack(app=app)
+await stack.start()
+
+db = await stack.resolve(DbDep)
+cache = await stack.resolve(CacheDep)
+
+# Cell 2 — use freely across cells
+rows = await db.fetch_all("SELECT * FROM users LIMIT 10")
+rows
+```
+
+```python
+# Cell 3 — teardown when done
+await stack.close()
+```
+
 ### Testing
 
 ```python
@@ -390,6 +456,36 @@ async def test_my_function(app):
     result = await my_function()
     assert result >= 0
 ```
+
+`FastApiDepsStack` fits naturally as a session- or module-scoped fixture. Define it once and layer per-service fixtures on top:
+
+```python
+import pytest
+from myapp.main import app
+from myapp.deps import DbDep, CacheDep
+from fastapi_depends_anywhere import FastApiDepsStack
+
+@pytest.fixture(scope="session")
+async def stack():
+    async with FastApiDepsStack(app=app) as s:
+        yield s
+
+@pytest.fixture(scope="session")
+async def db(stack):
+    return await stack.resolve(DbDep)
+
+@pytest.fixture(scope="session")
+async def cache(stack):
+    return await stack.resolve(CacheDep)
+
+async def test_user_count(db):
+    assert await db.count_users() >= 0
+
+async def test_cache_ping(cache):
+    assert await cache.ping()
+```
+
+All resolved instances share the same lifespan context and stay alive for the entire session.
 
 ## Contributing
 
