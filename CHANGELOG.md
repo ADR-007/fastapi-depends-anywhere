@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v1.3.0 (2026-05-24)
+
+### Features
+
+- Add FastApiDepsStack for long-lived dependency resolution outside request context
+  ([`f6f3426`](https://github.com/ADR-007/fastapi-depends-anywhere/commit/f6f3426cbe0ef9fcd51e9823ef0df661f27bd021))
+
+
 ## v1.2.0 (2026-05-23)
 
 ### Features
